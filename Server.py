@@ -2,6 +2,7 @@ import socket
 from _thread import *
 import socketserver
 import threading
+from ast import literal_eval
 
 class prot_server():
     def __init__(self):
@@ -16,7 +17,27 @@ class prot_server():
             print(f"Клиент {client_address} подключён")
             start_new_thread(self.management, (client, client_address))
 
-    def management(self, client, client_address):
+    def authorization_con(self, client, client_address):#добавить шифрование
+        while True:
+            data_recv = client.recv(1024)
+            data_recv = data_recv.decode()
+            s = literal_eval(data_recv)
+            user, password = s[0], s[1]
+            print(user, password)
+            #serch db
+            if user == 'root' and password == '11111111':
+                data_send = 1
+                data_send = data_send.to_bytes(2, "little", signed=True)
+                client.sendall(data_send)
+                break
+            else:
+                data_send = -1
+                data_send = data_send.to_bytes(2, "little", signed=True)
+                client.sendall(data_send)
+                exit_thread()
+
+    def management(self, client, client_address):#добавить шифрование
+        self.authorization_con(client, client_address)
         while True:
             data_send = "Выберите интересующую вас функцию: \n1)Диалог \n2)Отправить файл  \n3)Получить файл"
             data_send = data_send.encode()
@@ -25,10 +46,10 @@ class prot_server():
             data = data_bytes.decode()
             print(f"Сообщение от: {client_address}", data)
             if data == "Диалог":
-                self.fille_send(client, client_address)
+                self.accept(client, client_address)
                 break
 
-    def accept(self, client, client_address):
+    def accept(self, client, client_address):#добавить шифрование
         while True:
             data_bytes = client.recv(1024)
             data = data_bytes.decode()
@@ -39,7 +60,7 @@ class prot_server():
             data_bytes = data.encode()
             client.sendall(data_bytes)
 
-    def fille_send(self, client, client_addres):
+    def fille_send(self, client, client_addres):#добавить шифрование
         filename = "server.docx"
         file = open(filename, "rb")
         byte_len = (len(file.read())).to_bytes(8, 'big')
@@ -52,7 +73,7 @@ class prot_server():
                 break
         print("file sended")
 
-    def fille_accept(self, client, client_addres):
+    def fille_accept(self, client, client_addres):#добавить шифрование
         filename = "test_ser2.docx"
         file = open(filename, "wb")
         size_fill = 0
@@ -72,7 +93,6 @@ class prot_server():
             else:
                 file_data = client.recv(4096)
             file.write(file_data)
-
 
 
 if __name__ == '__main__':
