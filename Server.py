@@ -1,9 +1,11 @@
+import _thread
 import socket
 from _thread import *
 import socketserver
 import threading
 from ast import literal_eval
-
+import os
+_path = r"C:\Test_for_fill_track"
 class prot_server():
     def __init__(self):
         HOST = '127.0.0.1'
@@ -23,7 +25,8 @@ class prot_server():
             data_recv = data_recv.decode()
             s = literal_eval(data_recv)
             user, password = s[0], s[1]
-            print(user, password)
+            # print(user, password)
+            # print(_thread.get_ident())
             #serch db
             if user == 'root' and password == '11111111':
                 data_send = 1
@@ -34,20 +37,31 @@ class prot_server():
                 data_send = -1
                 data_send = data_send.to_bytes(2, "little", signed=True)
                 client.sendall(data_send)
-                exit_thread()
+                print(2)
+                # exit_thread()
 
     def management(self, client, client_address):#добавить шифрование
         self.authorization_con(client, client_address)
+        data_send = self.parse_folder(_path)
+        data_send = data_send.encode()
+        client.sendall(data_send)
         while True:
-            data_send = "Выберите интересующую вас функцию: \n1)Диалог \n2)Отправить файл  \n3)Получить файл"
-            data_send = data_send.encode()
-            client.sendall(data_send)
+            # data_send = "Выберите интересующую вас функцию: \n1)Диалог \n2)Отправить файл  \n3)Получить файл"
+            # data_send = data_send.encode()
+            # client.sendall(data_send)
+            print(11111111111111111)
             data_bytes = client.recv(1024)
+            print(22222222222222222)
             data = data_bytes.decode()
+            entries = list(data.split(","))
             print(f"Сообщение от: {client_address}", data)
-            if data == "Диалог":
-                self.accept(client, client_address)
-                break
+            if data:
+                if entries[0] == "Push_New_File":
+                    self.fille_accept(client, client_address)
+                elif entries[0] == "Get_File":
+                    self.fille_send(client, client_address, entries[1])
+                elif entries[0] == "Push_File":
+                    pass
 
     def accept(self, client, client_address):#добавить шифрование
         while True:
@@ -60,8 +74,8 @@ class prot_server():
             data_bytes = data.encode()
             client.sendall(data_bytes)
 
-    def fille_send(self, client, client_addres):#добавить шифрование
-        filename = "server.docx"
+    def fille_send(self, client, client_addres, fille_name):#добавить шифрование
+        filename = rf"{_path}/{fille_name}"
         file = open(filename, "rb")
         byte_len = (len(file.read())).to_bytes(8, 'big')
         client.sendall(byte_len)
@@ -94,6 +108,14 @@ class prot_server():
                 file_data = client.recv(4096)
             file.write(file_data)
 
+    def parse_folder(self, path):
+        files = ""
+        for file in os.listdir(path):
+            # if isdir(path + '/' + file):
+            #     files.extend(parse_folder(path + '/' + file))
+            # else:
+            files += file + ","
+        return files
 
 if __name__ == '__main__':
     a = prot_server()
