@@ -46,22 +46,20 @@ class prot_server():
         data_send = data_send.encode()
         client.sendall(data_send)
         while True:
-            # data_send = "Выберите интересующую вас функцию: \n1)Диалог \n2)Отправить файл  \n3)Получить файл"
-            # data_send = data_send.encode()
-            # client.sendall(data_send)
-            print(11111111111111111)
             data_bytes = client.recv(1024)
-            print(22222222222222222)
             data = data_bytes.decode()
             entries = list(data.split(","))
-            print(f"Сообщение от: {client_address}", data)
             if data:
                 if entries[0] == "Push_New_File":
-                    self.fille_accept(client, client_address)
+                    self.fille_accept(client, client_address, entries[1])
                 elif entries[0] == "Get_File":
                     self.fille_send(client, client_address, entries[1])
                 elif entries[0] == "Push_File":
-                    pass
+                    self.fille_accept(client, client_address, entries[1])
+                elif entries[0] == "update":
+                    data_send = self.parse_folder(_path)
+                    data_send = data_send.encode()
+                    client.sendall(data_send)
 
     def accept(self, client, client_address):#добавить шифрование
         while True:
@@ -87,8 +85,8 @@ class prot_server():
                 break
         print("file sended")
 
-    def fille_accept(self, client, client_addres):#добавить шифрование
-        filename = "test_ser2.docx"
+    def fille_accept(self, client, client_addres, fille_name):#добавить шифрование
+        filename = rf"{_path}/{fille_name}"
         file = open(filename, "wb")
         size_fill = 0
         size = 0
