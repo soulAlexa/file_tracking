@@ -207,12 +207,13 @@
 
 import socket
 from PyQt5.QtGui import QIcon, QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QMainWindow, QApplication, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QListView
+from PyQt5.QtWidgets import QMainWindow, QApplication, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget, QListView, QInputDialog, QFileDialog
 import sys
 from _thread import *
 from PyQt5 import QtCore
 from pywinauto import *
 import time
+
 
 
 
@@ -223,7 +224,8 @@ class Main_Window(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
+        self._t = False
+        self._fillname = ""
         self.setGeometry(800, 300, 600, 400)
         self.setWindowIcon(QIcon('icon.png'))
         HOST = '127.0.0.1'
@@ -233,21 +235,27 @@ class Main_Window(QMainWindow):
         self._window = self.Login_Window(self)
         self._window.show()
         self._window._b0.clicked.connect(self.management)
-        # self._set_face()
         title = "Файловая система"
         self.setWindowTitle(title)
         self.vie = QListView()
-        # self.vie.clicked.connect(self.activ_prot)
         v1 = QVBoxLayout()
-        self._b1 = QPushButton("Get_File")
-        self._b2 = QPushButton("Push_File")
-        self._b3 = QPushButton("Push_New_File")
+        self._b1 = QPushButton("Получить файл")
+        self._b2 = QPushButton("Загрузить файл")
+        self._b3 = QPushButton("Загрузить файл с новым именем")
+        self._b5 = QPushButton("Загрузить новый файл")
         self._b1.clicked.connect(self.fille_accept)
-        self._b2.clicked.connect(self.activ_prot)
-        # self._b3.clicked.connect(self.activ_prot)
+        self._b2.clicked.connect(self.fille_send)
+        self._b3.clicked.connect(self.fille_send_new_name)
+        self._b5.clicked.connect(self.file_send_new_file)
+
+        self._b4 = QPushButton("Обновить список")
+        self._b4.clicked.connect(self._update)
+
         v1.addWidget(self._b1)
         v1.addWidget(self._b2)
         v1.addWidget(self._b3)
+        v1.addWidget(self._b5)
+        v1.addWidget(self._b4)
         v1.addWidget(self.vie)
         w = QWidget()
         w.setLayout(v1)
@@ -317,8 +325,8 @@ class Main_Window(QMainWindow):
         print(data_send)
         data_send = data_send.encode()
         self.sock.sendall(data_send)
-        filename = self.activ_prot()
-        file = open(filename, "wb")
+        self._fillname = self.activ_prot()
+        file = open(self._fillname, "wb")
         size_fill = 0
         size = 0
         while True:
@@ -332,15 +340,20 @@ class Main_Window(QMainWindow):
                 file.write(file_data)
                 file.close()
                 print("fille accepted")
-                start_new_thread(self.see_you, (filename, ))
+                start_new_thread(self.see_you, (self._fillname, ))
                 break
             else:
                 file_data = self.sock.recv(4096)
             file.write(file_data)
 
     def fille_send(self):  # добавить шифрование
-        filename = "server.docx"
-        file = open(filename, "rb")
+        self.change()
+        file = open(self._fillname, "rb")
+        self._fillname = self._window._login.text() + str(time.time()) + self._fillname
+        data_send = f"Push_File,{self._fillname}"
+        print(data_send)
+        data_send = data_send.encode()
+        self.sock.sendall(data_send)
         byte_len = (len(file.read())).to_bytes(8, 'big')
         self.sock.sendall(byte_len)
         file.seek(0)
@@ -350,25 +363,7 @@ class Main_Window(QMainWindow):
             if not file_data:
                 break
         print("file sended")
-    # def _set_face(self):
-    #     title = "Файловая система"
-    #     self.setWindowTitle(title)
-    #     self.vie = QListView()
-    #     # self.vie.clicked.connect(self.activ_prot)
-    #     v1 = QVBoxLayout()
-    #     self._b1 = QPushButton("Get_File")
-    #     self._b2 = QPushButton("Push_File")
-    #     self._b3 = QPushButton("Push_New_File")
-    #     self._b1.clicked.connect()
-    #     self._b2.clicked.connect(self.activ_prot)
-    #     # self._b3.clicked.connect(self.activ_prot)
-    #     v1.addWidget(self._b1)
-    #     v1.addWidget(self._b2)
-    #     v1.addWidget(self._b3)
-    #     v1.addWidget(self.vie)
-    #     w = QWidget()
-    #     w.setLayout(v1)
-    #     self.setCentralWidget(w)
+        # self._update()
 
     def _set_list(self, fille_list):
         entries = list(fille_list.split(","))
@@ -382,22 +377,82 @@ class Main_Window(QMainWindow):
     def activ_prot(self):
         current_index = self.vie.currentIndex()
         item = current_index.data(QtCore.Qt.DisplayRole)
-        print(item)
         return item
 
     def see_you(self, fill_name):
+        self._t = False
         program_path = r"C:/Program Files/Microsoft Office/root/Office16/WINWORD.exe"
         file_path = f"{fill_name}"
         appl = Application(backend="uia").start(r'{} "{}"'.format(program_path, file_path))
         dlg = appl.window(title=f"{fill_name} - Word")
         while True:
             time.sleep(10)
-            dlg.SaveButton.click()
-            if self._b3.clicked:
+            try:
+                dlg.SaveButton.click()
+            except:
+                dlg = appl.window(title=f"{fill_name} (Last saved by user) - Word")
+                dlg.SaveButton.click()
+            if self._t:
+                try:
+                    dlg.SaveButton.click()
+                except:
+                    dlg = appl.window(title=f"{fill_name} (Last saved by user) - Word")
+                    dlg.SaveButton.click()
                 appl.kill()
                 break
+    def change(self):
+        self._t = True
 
+    def _update(self):
+        data_send = "update, "
+        data_send = data_send.encode()
+        self.sock.sendall(data_send)
+        data_recv = self.sock.recv(1024)
+        data_recv = data_recv.decode()
+        print(data_recv)
+        self._set_list(data_recv)
 
+    def fille_send_new_name(self):
+        text, okPressed = QInputDialog.getText(self, "Введите имя файла", "", QLineEdit.Normal, "")
+        if okPressed and text != '':
+            print(text)
+            self.change()
+            file = open(self._fillname, "rb")
+            data_send = f"Push_File,{text}.docx"
+            print(data_send)
+            data_send = data_send.encode()
+            self.sock.sendall(data_send)
+            byte_len = (len(file.read())).to_bytes(8, 'big')
+            self.sock.sendall(byte_len)
+            file.seek(0)
+            while True:
+                file_data = file.read(4096)
+                self.sock.send(file_data)
+                if not file_data:
+                    break
+            print("file sended")
+
+    def file_send_new_file(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
+                                                  "(*.docx)", options=options)
+        if fileName:
+            entries = list(fileName.split("/"))
+            file = open(fileName, "rb")
+            data_send = f"Push_File,{entries[-1]}"
+            print(data_send)
+            data_send = data_send.encode()
+            self.sock.sendall(data_send)
+            byte_len = (len(file.read())).to_bytes(8, 'big')
+            self.sock.sendall(byte_len)
+            file.seek(0)
+            while True:
+                file_data = file.read(4096)
+                self.sock.send(file_data)
+                if not file_data:
+                    break
+            print("file sended")
 # class prot_client():
 #     def __init__(self, window):
 #         HOST = '127.0.0.1'
@@ -500,10 +555,7 @@ if __name__ == '__main__':
     with open('style1.qss', 'r') as f:
         style = f.read()
     app.setStyleSheet(style)
-
     window2 = Main_Window()
-    # window.show()
-    # window2 = Main_Window(window)
     window2.show()
     window2.hide()
     app.exec()
