@@ -99,14 +99,16 @@ import os
 from os.path import isdir
 
 
-def parse_folder(path):
-    files = ""
-    for file in os.listdir(path):
-        # if isdir(path + '/' + file):
-        #     files.extend(parse_folder(path + '/' + file))
-        # else:
-        files += file + ","
-    return files
+# def parse_folder(path):
+#     files = ""
+#     for file in os.listdir(path):
+#         # if isdir(path + '/' + file):
+#         #     files.extend(parse_folder(path + '/' + file))
+#         # else:
+#         files += file + ","
+#     return files
+#
+#
+# print(parse_folder(r"C:\Test_for_fill_track"))
 
 
-print(parse_folder(r"C:\Test_for_fill_track"))
